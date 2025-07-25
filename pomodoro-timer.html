@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pomodoro Timer</title>
+    <style>
+        /* === KONFIGURACIJA - LAKO MENJANJE === */
+        :root {
+            /* Trajanja u minutima - menjaj ovde */
+            --pomodoro-duration: 25;
+            --short-break-duration: 5;
+            --long-break-duration: 15;
+            
+            /* Svetli režim boje */
+            --bg-light: #ffffff;
+            --surface-light: #f8fafc;
+            --text-light: #1e293b;
+            --text-secondary-light: #64748b;
+            --accent-light: #ef4444;
+            --accent-hover-light: #dc2626;
+            --border-light: #e2e8f0;
+            --success-light: #10b981;
+            
+            /* Tamni režim boje */
+            --bg-dark: #0f172a;
+            --surface-dark: #1e293b;
+            --text-dark: #f1f5f9;
+            --text-secondary-dark: #94a3b8;
+            --accent-dark: #f87171;
+            --accent-hover-dark: #ef4444;
+            --border-dark: #334155;
+            --success-dark: #34d399;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            transition: all 0.3s ease;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        /* Tema sistema */
+        @media (prefers-color-scheme: light) {
+            body {
+                --bg: var(--bg-light);
+                --surface: var(--surface-light);
+                --text: var(--text-light);
+                --text-secondary: var(--text-secondary-light);
+                --accent: var(--accent-light);
+                --accent-hover: var(--accent-hover-light);
+                --border: var(--border-light);
+                --success: var(--success-light);
+            }
+        }
+
+        @media (prefers-color-scheme: dark) {
+            body {
+                --bg: var(--bg-dark);
+                --surface: var(--surface-dark);
+                --text: var(--text-dark);
+                --text-secondary: var(--text-secondary-dark);
+                --accent: var(--accent-dark);
+                --accent-hover: var(--accent-hover-dark);
+                --border: var(--border-dark);
+                --success: var(--success-dark);
+            }
+        }
+
+        /* Manuelno prebacivanje teme */
+        body.light-theme {
+            --bg: var(--bg-light);
+            --surface: var(--surface-light);
+            --text: var(--text-light);
+            --text-secondary: var(--text-secondary-light);
+            --accent: var(--accent-light);
+            --accent-hover: var(--accent-hover-light);
+            --border: var(--border-light);
+            --success: var(--success-light);
+        }
+
+        body.dark-theme {
+            --bg: var(--bg-dark);
+            --surface: var(--surface-dark);
+            --text: var(--text-dark);
+            --text-secondary: var(--text-secondary-dark);
+            --accent: var(--accent-dark);
+            --accent-hover: var(--accent-hover-dark);
+            --border: var(--border-dark);
+            --success: var(--success-dark);
+        }
+
+        .container {
+            background: var(--surface);
+            border-radius: 20px;
+            padding: 32px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--border);
+            max-width: 400px;
+            width: 100%;
+            transition: all 0.3s ease;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+        }
+
+        .logo {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .theme-toggle {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            font-size: 16px;
+        }
+
+        .theme-toggle:hover {
+            background: var(--border);
+            color: var(--text);
+        }
+
+        .timer-section {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .mode-selector {
+            display: flex;
+            background: var(--border);
+            border-radius: 12px;
+            padding: 4px;
+            margin-bottom: 24px;
+            gap: 4px;
+        }
+
+        .mode-btn {
+            flex: 1;
+            background: none;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .mode-btn.active {
+            background: var(--accent);
+            color: white;
+        }
+
+        .timer-display {
+            font-size: 48px;
+            font-weight: 300;
+            margin: 24px 0;
+            font-variant-numeric: tabular-nums;
+            color: var(--text);
+        }
+
+        .timer-controls {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-bottom: 24px;
+        }
+
+        .control-btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .control-btn:hover {
+            background: var(--accent-hover);
+            transform: translateY(-1px);
+        }
+
+        .control-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .control-btn.secondary {
+            background: var(--border);
+            color: var(--text);
+        }
+
+        .control-btn.secondary:hover {
+            background: var(--text-secondary);
+            color: var(--surface);
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 16px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--accent);
+            width: 0%;
+            transition: width 0.5s ease;
+            border-radius: 2px;
+        }
+
+        .session-info {
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 14px;
+            margin-bottom: 24px;
+        }
+
+        .tasks-section {
+            margin-bottom: 24px;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--text);
+        }
+
+        .task-input-container {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .task-input {
+            flex: 1;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 12px;
+            color: var(--text);
+            font-size: 14px;
+        }
+
+        .task-input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .add-task-btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .tasks-list {
+            max-height: 120px;
+            overflow-y: auto;
+        }
+
+        .task-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .task-item:last-child {
+            border-bottom: none;
+        }
+
+        .task-checkbox {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+            border: 2px solid var(--border);
+            cursor: pointer;
+            position: relative;
+        }
+
+        .task-checkbox.checked {
+            background: var(--success);
+            border-color: var(--success);
+        }
+
+        .task-checkbox.checked::after {
+            content: '✓';
+            position: absolute;
+            top: -2px;
+            left: 1px;
+            color: white;
+            font-size: 12px;
+        }
+
+        .task-text {
+            flex: 1;
+            font-size: 14px;
+            color: var(--text);
+        }
+
+        .task-text.completed {
+            text-decoration: line-through;
+            color: var(--text-secondary);
+        }
+
+        .task-delete {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+        }
+
+        .task-delete:hover {
+            background: var(--border);
+            color: var(--accent);
+        }
+
+        .stats-section {
+            border-top: 1px solid var(--border);
+            padding-top: 16px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            text-align: center;
+        }
+
+        .stat-item {
+            background: var(--bg);
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .stat-number {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--accent);
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        .sound-toggle {
+            position: absolute;
+            top: 16px;
+            right: 60px;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            font-size: 16px;
+        }
+
+        .sound-toggle:hover {
+            background: var(--border);
+            color: var(--text);
+        }
+
+        .shortcuts-info {
+            text-align: center;
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 16px;
+            opacity: 0.7;
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                margin: 10px;
+                padding: 24px;
+            }
+            
+            .timer-display {
+                font-size: 36px;
+            }
+            
+            .mode-selector {
+                flex-direction: column;
+                gap: 2px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🍅 Pomodoro</div>
+            <button class="sound-toggle" id="soundToggle" title="Toggle Sound">🔊</button>
+            <button class="theme-toggle" id="themeToggle" title="Toggle Theme">🌙</button>
+        </div>
+
+        <div class="timer-section">
+            <div class="mode-selector">
+                <button class="mode-btn active" data-mode="pomodoro">Pomodoro</button>
+                <button class="mode-btn" data-mode="shortBreak">Short Break</button>
+                <button class="mode-btn" data-mode="longBreak">Long Break</button>
+            </div>
+
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+
+            <div class="timer-display" id="timerDisplay">25:00</div>
+
+            <div class="session-info" id="sessionInfo">
+                Session 1 of 4 • Next: Short Break
+            </div>
+
+            <div class="timer-controls">
+                <button class="control-btn" id="startPauseBtn">Start</button>
+                <button class="control-btn secondary" id="resetBtn">Reset</button>
+            </div>
+        </div>
+
+        <div class="tasks-section">
+            <div class="section-title">Today's Goals</div>
+            <div class="task-input-container">
+                <input type="text" class="task-input" id="taskInput" placeholder="Add new goal..." maxlength="50">
+                <button class="add-task-btn" id="addTaskBtn">+</button>
+            </div>
+            <div class="tasks-list" id="tasksList"></div>
+        </div>
+
+        <div class="stats-section">
+            <div class="section-title">Statistics</div>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-number" id="sessionsToday">0</div>
+                    <div class="stat-label">Sessions today</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="focusTime">0h</div>
+                    <div class="stat-label">Focus time</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="shortcuts-info">
+            Space: Start/Pause • R: Reset
+        </div>
+    </div>
+
+    <script>
+        // === KONFIGURACIJA ===
+        const CONFIG = {
+            durations: {
+                pomodoro: parseInt(getComputedStyle(document.documentElement).getPropertyValue('--pomodoro-duration')) * 60,
+                shortBreak: parseInt(getComputedStyle(document.documentElement).getPropertyValue('--short-break-duration')) * 60,
+                longBreak: parseInt(getComputedStyle(document.documentElement).getPropertyValue('--long-break-duration')) * 60
+            },
+            pomodorosUntilLongBreak: 4
+        };
+
+        // === STATE ===
+        let currentMode = 'pomodoro';
+        let timeLeft = CONFIG.durations.pomodoro;
+        let isRunning = false;
+        let timer = null;
+        let currentSession = 1;
+        let completedPomodoros = 0;
+        let soundEnabled = true;
+        let tasks = [];
+
+        // === DOM ELEMENTI ===
+        const timerDisplay = document.getElementById('timerDisplay');
+        const startPauseBtn = document.getElementById('startPauseBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const progressFill = document.getElementById('progressFill');
+        const sessionInfo = document.getElementById('sessionInfo');
+        const modeButtons = document.querySelectorAll('.mode-btn');
+        const themeToggle = document.getElementById('themeToggle');
+        const soundToggle = document.getElementById('soundToggle');
+        const taskInput = document.getElementById('taskInput');
+        const addTaskBtn = document.getElementById('addTaskBtn');
+        const tasksList = document.getElementById('tasksList');
+        const sessionsToday = document.getElementById('sessionsToday');
+        const focusTime = document.getElementById('focusTime');
+
+        // === INICIJALIZACIJA ===
+        function init() {
+            loadData();
+            updateDisplay();
+            updateSessionInfo();
+            updateStats();
+            renderTasks();
+            
+            // Event listeneri
+            startPauseBtn.addEventListener('click', toggleTimer);
+            resetBtn.addEventListener('click', resetTimer);
+            themeToggle.addEventListener('click', toggleTheme);
+            soundToggle.addEventListener('click', toggleSound);
+            addTaskBtn.addEventListener('click', addTask);
+            taskInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') addTask();
+            });
+
+            modeButtons.forEach(btn => {
+                btn.addEventListener('click', () => changeMode(btn.dataset.mode));
+            });
+
+            // Keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                if (e.code === 'Space' && e.target.tagName !== 'INPUT') {
+                    e.preventDefault();
+                    toggleTimer();
+                }
+                if (e.code === 'KeyR' && e.target.tagName !== 'INPUT') {
+                    e.preventDefault();
+                    resetTimer();
+                }
+            });
+
+            // Automatska tema
+            updateThemeIcon();
+        }
+
+        // === TIMER FUNKCIJE ===
+        function toggleTimer() {
+            if (isRunning) {
+                pauseTimer();
+            } else {
+                startTimer();
+            }
+        }
+
+        function startTimer() {
+            isRunning = true;
+            startPauseBtn.textContent = 'Pause';
+            
+            timer = setInterval(() => {
+                timeLeft--;
+                updateDisplay();
+                updateProgress();
+                
+                if (timeLeft <= 0) {
+                    completeSession();
+                }
+            }, 1000);
+        }
+
+        function pauseTimer() {
+            isRunning = false;
+            startPauseBtn.textContent = 'Resume';
+            clearInterval(timer);
+        }
+
+        function resetTimer() {
+            isRunning = false;
+            clearInterval(timer);
+            timeLeft = CONFIG.durations[currentMode];
+            startPauseBtn.textContent = 'Start';
+            updateDisplay();
+            updateProgress();
+        }
+
+        function completeSession() {
+            pauseTimer();
+            playNotificationSound();
+            
+            if (currentMode === 'pomodoro') {
+                completedPomodoros++;
+                updateStats();
+                saveData();
+                
+                // Automatski prelazak na pauzu
+                if (completedPomodoros % CONFIG.pomodorosUntilLongBreak === 0) {
+                    changeMode('longBreak');
+                } else {
+                    changeMode('shortBreak');
+                }
+            } else {
+                // Povratak na pomodoro nakon pauze
+                if (currentMode === 'longBreak') {
+                    currentSession = 1;
+                } else {
+                    currentSession++;
+                }
+                changeMode('pomodoro');
+            }
+            
+            updateSessionInfo();
+        }
+
+        function changeMode(mode) {
+            currentMode = mode;
+            timeLeft = CONFIG.durations[mode];
+            isRunning = false;
+            clearInterval(timer);
+            startPauseBtn.textContent = 'Start';
+            
+            // Update UI
+            modeButtons.forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.mode === mode);
+            });
+            
+            updateDisplay();
+            updateProgress();
+        }
+
+        // === DISPLAY FUNKCIJE ===
+        function updateDisplay() {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            timerDisplay.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            
+            // Update title
+            document.title = `${timerDisplay.textContent} - Pomodoro`;
+        }
+
+        function updateProgress() {
+            const totalTime = CONFIG.durations[currentMode];
+            const elapsed = totalTime - timeLeft;
+            const progress = (elapsed / totalTime) * 100;
+            progressFill.style.width = `${Math.max(0, Math.min(100, progress))}%`;
+        }
+
+        function updateSessionInfo() {
+            const totalSessions = CONFIG.pomodorosUntilLongBreak;
+            let nextMode = '';
+            
+            if (currentMode === 'pomodoro') {
+                nextMode = currentSession === totalSessions ? 'Long Break' : 'Short Break';
+            } else {
+                nextMode = currentMode === 'longBreak' ? 'New Cycle' : 'Pomodoro';
+            }
+            
+            sessionInfo.textContent = `Session ${currentSession} of ${totalSessions} • Next: ${nextMode}`;
+        }
+
+        // === TASK FUNKCIJE ===
+        function addTask() {
+            const text = taskInput.value.trim();
+            if (!text) return;
+            
+            const task = {
+                id: Date.now(),
+                text: text,
+                completed: false
+            };
+            
+            tasks.push(task);
+            taskInput.value = '';
+            renderTasks();
+            saveData();
+        }
+
+        function toggleTask(id) {
+            const task = tasks.find(t => t.id === id);
+            if (task) {
+                task.completed = !task.completed;
+                renderTasks();
+                saveData();
+            }
+        }
+
+        function deleteTask(id) {
+            tasks = tasks.filter(t => t.id !== id);
+            renderTasks();
+            saveData();
+        }
+
+        function renderTasks() {
+            tasksList.innerHTML = '';
+            
+            tasks.forEach(task => {
+                const taskElement = document.createElement('div');
+                taskElement.classList.add('task-item');
+                
+                taskElement.innerHTML = `
+                    <div class="task-checkbox ${task.completed ? 'checked' : ''}" onclick="toggleTask(${task.id})"></div>
+                    <div class="task-text ${task.completed ? 'completed' : ''}">${task.text}</div>
+                    <button class="task-delete" onclick="deleteTask(${task.id})" title="Delete">×</button>
+                `;
+                
+                tasksList.appendChild(taskElement);
+            });
+        }
+
+        // === TEMA I ZVUK ===
+        function toggleTheme() {
+            const body = document.body;
+            if (body.classList.contains('light-theme')) {
+                body.classList.remove('light-theme');
+                body.classList.add('dark-theme');
+            } else if (body.classList.contains('dark-theme')) {
+                body.classList.remove('dark-theme');
+                body.classList.add('light-theme');
+            } else {
+                // Sistem tema -> manuelna
+                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                body.classList.add(prefersDark ? 'light-theme' : 'dark-theme');
+            }
+            
+            updateThemeIcon();
+            saveData();
+        }
+
+        function updateThemeIcon() {
+            const body = document.body;
+            let icon = '🌙';
+            
+            if (body.classList.contains('light-theme')) {
+                icon = '🌙';
+            } else if (body.classList.contains('dark-theme')) {
+                icon = '☀️';
+            } else {
+                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                icon = prefersDark ? '☀️' : '🌙';
+            }
+            
+            themeToggle.textContent = icon;
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            soundToggle.textContent = soundEnabled ? '🔊' : '🔇';
+            saveData();
+        }
+
+        function playNotificationSound() {
+            if (!soundEnabled) return;
+            
+            // Kreiranje jednostavnog beep zvuka
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+            oscillator.type = 'sine';
+            
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.5);
+        }
+
+        // === STATISTIKE ===
+        function updateStats() {
+            const today = new Date().toDateString();
+            let stats = JSON.parse(localStorage.getItem('pomodoroStats') || '{}');
+            
+            if (!stats[today]) {
+                stats[today] = { sessions: 0, focusTime: 0 };
+            }
+            
+            stats[today].sessions = completedPomodoros;
+            stats[today].focusTime = completedPomodoros * (CONFIG.durations.pomodoro / 60); // u minutima
+            
+            sessionsToday.textContent = stats[today].sessions;
+            
+            const hours = Math.floor(stats[today].focusTime / 60);
+            const minutes = stats[today].focusTime % 60;
+            focusTime.textContent = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+            
+            localStorage.setItem('pomodoroStats', JSON.stringify(stats));
+        }
+
+        // === PODATCI ===
+        function saveData() {
+            const data = {
+                currentMode,
+                timeLeft,
+                currentSession,
+                completedPomodoros,
+                soundEnabled,
+                tasks,
+                theme: document.body.className
+            };
+            
+            localStorage.setItem('pomodoroData', JSON.stringify(data));
+        }
+
+        function loadData() {
+            const data = JSON.parse(localStorage.getItem('pomodoroData') || '{}');
+            
+            if (data.currentMode) currentMode = data.currentMode;
+            if (data.timeLeft) timeLeft = data.timeLeft;
+            if (data.currentSession) currentSession = data.currentSession;
+            if (data.completedPomodoros) completedPomodoros = data.completedPomodoros;
+            if (data.soundEnabled !== undefined) soundEnabled = data.soundEnabled;
+            if (data.tasks) tasks = data.tasks;
+            if (data.theme) document.body.className = data.theme;
+            
+            // Update UI elementi
+            modeButtons.forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.mode === currentMode);
+            });
+            
+            soundToggle.textContent = soundEnabled ? '🔊' : '🔇';
+        }
+
+        // Globalne funkcije za task management
+        window.toggleTask = toggleTask;
+        window.deleteTask = deleteTask;
+
+        // Pokretanje aplikacije
+        init();
+    </script>
+</body>
+</html>
